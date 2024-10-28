@@ -13,8 +13,8 @@ const agent = new https.Agent({
 
 // Middleware для обработки JSON
 app.use(express.json());
-// refreshToken();
-// setInterval(refreshToken, 1800000);
+refreshToken();
+setInterval(refreshToken, 1800000);
 
 // Обработка GET-запроса
 app.get("/", (req, res) => {
