@@ -17,8 +17,8 @@ app.use(express.json());
 // setInterval(refreshToken, 1800000);
 
 // Обработка GET-запроса
-app.get("/api/hello", (req, res) => {
-  res.json({ message: "Hello, World!" });
+app.get("/", (req, res) => {
+  res.send("Hello, Skitterok!");
 });
 
 app.post("/api/query", async (req, res) => {
