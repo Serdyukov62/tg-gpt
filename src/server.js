@@ -1,59 +1,95 @@
-require("dotenv").config();
+import dotenv from 'dotenv';
+import express from 'express';
+import axios from 'axios';
+import https from 'https';
+import fs from 'fs';
+import path from 'path';
+import querystring from 'querystring';
 
-const { default: axios } = require("axios");
-const express = require("express");
+dotenv.config();
+
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = 3000;
 
-const { refreshToken } = require("./refreshToken");
-
-
-
-// Middleware для обработки JSON
 app.use(express.json());
-refreshToken();
-setInterval(refreshToken, 1800000);
 
-// Обработка GET-запроса
-app.get("/", (req, res) => {
-  res.send("Hello, Skitterok!");
+// Укажите путь к вашему сертификату
+const certPath = path.resolve(__dirname, 'russiantrustedca.pem');
+const cert = fs.readFileSync(certPath);
+
+const httpsAgent = new https.Agent({
+    ca: cert
 });
 
-app.post("/api/query", async (req, res) => {
-  const userInput = req.body.query;
+if(!process.env.GIGACHAT_API_URL || !process.env.GIGACHAT_CLIENT_ID || !process.env.GIGACHAT_CLIENT_SECRET) {
+    console.error('GIGACHAT_API_URL, GIGACHAT_CLIENT_ID или GIGACHAT_CLIENT_SECRET не установлены');
+    process.exit(1);
+}
 
-  try {
-    const response = await axios.post(
-      "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
-      {
-        model: "GigaChat",
-        stream: false,
-        update_interval: 0,
-        messages: [
-          {
-            role: "system",
-            content: "Отвечай как научный сотрудник",
-          },
-          {
-            role: "user",
-            content: `${userInput}`,
-          },
-        ],
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
-          "Content-Type": "application/json",
+async function getAccessToken() {
+    try {
+        const data = querystring.stringify({
+            scope: 'GIGACHAT_API_PERS'
+        });
+
+        const clientSecret = process.env.GIGACHAT_CLIENT_SECRET;
+        const authHeader = `Basic ${clientSecret}`;
+        const rqUid = process.env.RQ_UID;
+        const response = await axios.post('https://ngw.devices.sberbank.ru:9443/api/v2/oauth', data, {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json',
+                'RqUID': rqUid,
+                'Authorization': authHeader
+            },
+            httpsAgent
+        });
+
+        return response.data.access_token;
+    } catch (error) {
+        console.error('Ошибка при получении токена доступа:', error.response ? error.response.data : error.message);
+        throw error;
+    }
+}
+
+
+
+app.post('/chat', async (req, res) => {
+    const { message } = req.body;
+
+    try {
+        const token = await getAccessToken();
+        if(!process.env.GIGACHAT_API_URL) {
+            console.error('GIGACHAT_API_URL не установлен');
+            process.exit(1);
+            
         }
-      }
-    );
-    res.json(response.data);
-  } catch (error) {
-    res.status(500).send("Error communicating with the API");
-  }
+        const response = await axios.post(process.env.GIGACHAT_API_URL, {
+            model: 'GigaChat',
+            messages: [
+                {
+                    role: 'user',
+                    content: message
+                }
+            ],
+            stream: false,
+            repetition_penalty: 1
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            httpsAgent
+        });
+
+        res.json(response.data);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Ошибка при обращении к GigaChat API');
+    }
 });
 
-// Запуск сервера
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+app.listen(port, () => {
+    console.log(`Сервер запущен на http://localhost:${port}`);
 });
