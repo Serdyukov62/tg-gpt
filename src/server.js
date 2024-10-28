@@ -14,7 +14,7 @@ const port = 3000;
 app.use(express.json());
 
 // Укажите путь к вашему сертификату
-const certPath = path.resolve(__dirname, 'russiantrustedca.pem');
+const certPath = path.resolve(__dirname, 'russian_trusted_root_ca_pem.crt');
 const cert = fs.readFileSync(certPath);
 
 const httpsAgent = new https.Agent({
