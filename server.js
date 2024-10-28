@@ -4,12 +4,8 @@ const { default: axios } = require("axios");
 const express = require("express");
 const app = express();
 const PORT = process.env.PORT || 3000;
-const https = require("https");
 const { refreshToken } = require("./refreshToken");
 
-const agent = new https.Agent({
-  rejectUnauthorized: false,
-});
 
 // Middleware для обработки JSON
 app.use(express.json());
@@ -46,8 +42,7 @@ app.post("/api/query", async (req, res) => {
         headers: {
           Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
           "Content-Type": "application/json",
-        },
-        httpsAgent: agent,
+        }
       }
     );
     res.json(response.data);
