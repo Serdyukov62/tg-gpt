@@ -3,7 +3,7 @@ const https = require("https");
 const fs = require("fs");
 
 const agent = new https.Agent({
-    ca: fs.readFileSync("/etc/letsencrypt/live/skitterbratok.ru/ca.pem"),
+    ca: fs.readFileSync("/etc/letsencrypt/live/skitterbratok.ru"),
   });
 
 async function refreshToken() {
